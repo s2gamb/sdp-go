@@ -38,7 +38,8 @@ type Client struct {
 	apiKey   string
 
 	// Services
-	Requests *RequestsService
+	Requests    *RequestsService
+	Technicians *TechniciansService
 }
 
 // WithHTTPClient overrides the default http.Client.
@@ -110,6 +111,7 @@ func NewClient(rawBaseURL string, opts ...ClientOption) (*Client, error) {
 
 	// Initialize Services
 	c.Requests = NewRequestsService(c)
+	c.Technicians = NewTechniciansService(c)
 
 	return c, nil
 }

@@ -75,14 +75,23 @@ type RequestListResponse[UDF any] struct {
 	Requests       []Request[UDF]         `json:"requests"`
 }
 
+// SearchCriterion defines a single filter condition in SDP list_info.search_criteria.
+type SearchCriterion struct {
+	Field           string `json:"field"`
+	Condition       string `json:"condition"`
+	Value           any    `json:"value"`
+	LogicalOperator string `json:"logical_operator,omitempty"`
+}
+
 // ListOptions specifies parameters for pagination, sorting, and filtering.
 type ListOptions struct {
-	Page         int               `json:"page,omitempty"`
-	RowCount     int               `json:"row_count,omitempty"`
-	StartIndex   int               `json:"start_index,omitempty"`
-	SearchFields map[string]any    `json:"search_fields,omitempty"`
-	SortFields   map[string]string `json:"sort_fields,omitempty"`
-	FilterBy     string            `json:"filter_by,omitempty"`
+	Page           int               `json:"page,omitempty"`
+	RowCount       int               `json:"row_count,omitempty"`
+	StartIndex     int               `json:"start_index,omitempty"`
+	SearchFields   map[string]any    `json:"search_fields,omitempty"`
+	SearchCriteria []SearchCriterion `json:"search_criteria,omitempty"`
+	SortFields     map[string]string `json:"sort_fields,omitempty"`
+	FilterBy       string            `json:"filter_by,omitempty"`
 }
 
 // RequestsService handles communication with the requests-related methods of the SDP API.
@@ -135,38 +144,51 @@ func GetRequest[UDF any](ctx context.Context, client *Client, id string) (*Reque
 	return &resp.Request, nil
 }
 
+func encodeListOptions(opts *ListOptions) (url.Values, error) {
+	queryParams := url.Values{}
+	if opts == nil {
+		return queryParams, nil
+	}
+
+	listInfoMap := map[string]any{}
+	if opts.Page > 0 {
+		listInfoMap["page"] = opts.Page
+	}
+	if opts.RowCount > 0 {
+		listInfoMap["row_count"] = opts.RowCount
+	}
+	if opts.StartIndex > 0 {
+		listInfoMap["start_index"] = opts.StartIndex
+	}
+	if len(opts.SearchFields) > 0 {
+		listInfoMap["search_fields"] = opts.SearchFields
+	}
+	if len(opts.SearchCriteria) > 0 {
+		listInfoMap["search_criteria"] = opts.SearchCriteria
+	}
+	if len(opts.SortFields) > 0 {
+		listInfoMap["sort_fields"] = opts.SortFields
+	}
+	if opts.FilterBy != "" {
+		listInfoMap["filter_by"] = opts.FilterBy
+	}
+
+	if len(listInfoMap) > 0 {
+		inputData, err := json.Marshal(map[string]any{"list_info": listInfoMap})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode list_info: %w", err)
+		}
+		queryParams.Set("input_data", string(inputData))
+	}
+
+	return queryParams, nil
+}
+
 // ListRequests fetches requests matching ListOptions with typed custom fields.
 func ListRequests[UDF any](ctx context.Context, client *Client, opts *ListOptions) (*RequestListResponse[UDF], error) {
-	queryParams := url.Values{}
-
-	if opts != nil {
-		listInfoMap := map[string]any{}
-		if opts.Page > 0 {
-			listInfoMap["page"] = opts.Page
-		}
-		if opts.RowCount > 0 {
-			listInfoMap["row_count"] = opts.RowCount
-		}
-		if opts.StartIndex > 0 {
-			listInfoMap["start_index"] = opts.StartIndex
-		}
-		if len(opts.SearchFields) > 0 {
-			listInfoMap["search_fields"] = opts.SearchFields
-		}
-		if len(opts.SortFields) > 0 {
-			listInfoMap["sort_fields"] = opts.SortFields
-		}
-		if opts.FilterBy != "" {
-			listInfoMap["filter_by"] = opts.FilterBy
-		}
-
-		if len(listInfoMap) > 0 {
-			inputData, err := json.Marshal(map[string]any{"list_info": listInfoMap})
-			if err != nil {
-				return nil, fmt.Errorf("failed to encode list_info: %w", err)
-			}
-			queryParams.Set("input_data", string(inputData))
-		}
+	queryParams, err := encodeListOptions(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	var resp RequestListResponse[UDF]

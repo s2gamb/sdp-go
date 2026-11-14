@@ -1,8 +1,16 @@
 package sdp
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+)
+
+var (
+	// ErrTechnicianNotFound is returned when a technician lookup matches no records.
+	ErrTechnicianNotFound = errors.New("sdp: technician not found")
+	// ErrMultipleTechniciansFound is returned when a unique technician lookup matches more than one record.
+	ErrMultipleTechniciansFound = errors.New("sdp: multiple technicians matched")
 )
 
 // APIError represents an error returned by the ServiceDesk Plus API.
