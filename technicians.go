@@ -21,7 +21,7 @@ type StandardTechnician struct {
 	ReportingTo *UserRef    `json:"reporting_to,omitempty"`
 	ProfilePic  *ProfilePic `json:"profile_pic,omitempty"`
 	EmployeeID  string      `json:"employee_id,omitempty"`
-	JobTitle    string      `json:"job_title,omitempty"`
+	JobTitle    string      `json:"jobtitle,omitempty"`
 	CostPerHour string      `json:"cost_per_hour,omitempty"`
 	Description *string     `json:"description,omitempty"`
 }
@@ -29,7 +29,8 @@ type StandardTechnician struct {
 // Technician embeds StandardTechnician and supports strongly-typed or dynamic custom fields via UDF.
 type Technician[UDF any] struct {
 	StandardTechnician
-	UDFFields UDF `json:"udf_fields,omitempty"`
+	UDFFields     UDF            `json:"technician_udf_fields,omitempty"`
+	UserUDFFields map[string]any `json:"user_udf_fields,omitempty"`
 }
 
 // DefaultTechnician is an alias for technicians with dynamic map[string]any custom fields.

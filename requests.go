@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 )
 
 // StandardRequest contains the common, documented fields found in SDP requests.
@@ -81,6 +82,12 @@ type SearchCriterion struct {
 	Condition       string `json:"condition"`
 	Value           any    `json:"value"`
 	LogicalOperator string `json:"logical_operator,omitempty"`
+}
+
+// SortField defines a field and sort direction for list_info.sort_fields.
+type SortField struct {
+	Field string `json:"field"`
+	Order string `json:"order"`
 }
 
 // ListOptions specifies parameters for pagination, sorting, and filtering.
@@ -167,7 +174,20 @@ func encodeListOptions(opts *ListOptions) (url.Values, error) {
 		listInfoMap["search_criteria"] = opts.SearchCriteria
 	}
 	if len(opts.SortFields) > 0 {
-		listInfoMap["sort_fields"] = opts.SortFields
+		keys := make([]string, 0, len(opts.SortFields))
+		for k := range opts.SortFields {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		sortFields := make([]SortField, 0, len(keys))
+		for _, k := range keys {
+			sortFields = append(sortFields, SortField{
+				Field: k,
+				Order: opts.SortFields[k],
+			})
+		}
+		listInfoMap["sort_fields"] = sortFields
 	}
 	if opts.FilterBy != "" {
 		listInfoMap["filter_by"] = opts.FilterBy

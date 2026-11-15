@@ -38,8 +38,9 @@ type Client struct {
 	apiKey   string
 
 	// Services
-	Requests    *RequestsService
-	Technicians *TechniciansService
+	Requests      *RequestsService
+	Technicians   *TechniciansService
+	SupportGroups *SupportGroupsService
 }
 
 // WithHTTPClient overrides the default http.Client.
@@ -112,6 +113,7 @@ func NewClient(rawBaseURL string, opts ...ClientOption) (*Client, error) {
 	// Initialize Services
 	c.Requests = NewRequestsService(c)
 	c.Technicians = NewTechniciansService(c)
+	c.SupportGroups = NewSupportGroupsService(c)
 
 	return c, nil
 }
@@ -141,8 +143,8 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "application/vnd.manageengine.sdp.v3+json, application/json")
 
-	// Apply Authentication
-	if c.apiKey != "" {
+	// Apply Authentication only to the configured SDP host.
+	if c.apiKey != "" && u.Host == c.baseURL.Host {
 		switch c.authType {
 		case AuthTechnicianKey:
 			req.Header.Set("authtoken", c.apiKey)

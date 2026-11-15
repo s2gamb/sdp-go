@@ -3,6 +3,7 @@ package sdp
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // ResponseStatus represents a status item returned by SDP APIs.
@@ -70,10 +71,38 @@ type ListInfo struct {
 	RowCount    int  `json:"row_count"`
 }
 
-// SDPTime captures SDP's timestamp structure where epoch millis is returned as a string.
+// SDPTime captures SDP's timestamp structure where epoch millis is returned as a string or number.
 type SDPTime struct {
 	DisplayValue string `json:"display_value"`
 	Value        string `json:"value"` // Unix timestamp in milliseconds as string
+}
+
+// UnmarshalJSON decodes SDPTime while tolerating both string and numeric epoch values.
+func (t *SDPTime) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		DisplayValue string          `json:"display_value"`
+		Value        json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	t.DisplayValue = raw.DisplayValue
+	t.Value = unmarshalFlexibleString(raw.Value)
+	return nil
+}
+
+func unmarshalFlexibleString(raw json.RawMessage) string {
+	s := strings.TrimSpace(string(raw))
+	if s == "" || s == "null" {
+		return ""
+	}
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		var str string
+		if err := json.Unmarshal(raw, &str); err == nil {
+			return str
+		}
+	}
+	return s
 }
 
 // Ref represents a common {id, name} reference object in SDP.
@@ -126,7 +155,12 @@ type Resolution struct {
 
 // Attachment represents an attached file.
 type Attachment struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Size string `json:"size,omitempty"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Size         string   `json:"size,omitempty"`
+	ContentType  string   `json:"content_type,omitempty"`
+	ContentURL   string   `json:"content_url,omitempty"`
+	Module       string   `json:"module,omitempty"`
+	AttachedBy   *UserRef `json:"attached_by,omitempty"`
+	AttachedTime *SDPTime `json:"attached_time,omitempty"`
 }

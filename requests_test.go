@@ -2,6 +2,7 @@ package sdp_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -167,5 +168,52 @@ func TestRequestsService_ErrorHandling(t *testing.T) {
 	}
 	if len(apiErr.ResponseStatus) == 0 || apiErr.ResponseStatus[0].StatusCode != 4000 {
 		t.Errorf("unexpected ResponseStatus: %+v", apiErr.ResponseStatus)
+	}
+}
+
+func TestRequestsService_List_SortFields(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawInput := r.URL.Query().Get("input_data")
+		if rawInput == "" {
+			t.Fatal("missing input_data query param")
+		}
+
+		var payload struct {
+			ListInfo struct {
+				SortFields []sdp.SortField `json:"sort_fields"`
+			} `json:"list_info"`
+		}
+		if err := json.Unmarshal([]byte(rawInput), &payload); err != nil {
+			t.Fatalf("failed to unmarshal input_data %q: %v", rawInput, err)
+		}
+		if len(payload.ListInfo.SortFields) != 1 {
+			t.Fatalf("expected 1 sort_field, got %+v", payload.ListInfo.SortFields)
+		}
+		if payload.ListInfo.SortFields[0].Field != "created_time" || payload.ListInfo.SortFields[0].Order != "desc" {
+			t.Errorf("unexpected sort_fields: %+v", payload.ListInfo.SortFields)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"response_status": [{"status_code": 2000, "status": "success"}],
+			"requests": []
+		}`))
+	}))
+	defer ts.Close()
+
+	client, err := sdp.NewClient(ts.URL, sdp.WithAuthToken("token"))
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, err = client.Requests.List(context.Background(), &sdp.ListOptions{
+		Page:     1,
+		RowCount: 8,
+		SortFields: map[string]string{
+			"created_time": "desc",
+		},
+	})
+	if err != nil {
+		t.Fatalf("client.Requests.List failed: %v", err)
 	}
 }

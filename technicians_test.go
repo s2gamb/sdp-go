@@ -33,8 +33,12 @@ func TestTechniciansService_Get(t *testing.T) {
 				"email_id": "alice@company.com",
 				"login_name": "alice",
 				"status": "ACTIVE",
-				"udf_fields": {
+				"jobtitle": "Senior Engineer",
+				"technician_udf_fields": {
 					"udf_char1": "987654321"
+				},
+				"user_udf_fields": {
+					"udf_sline_2401": "ext-100"
 				}
 			}
 		}`))
@@ -50,11 +54,14 @@ func TestTechniciansService_Get(t *testing.T) {
 	if err != nil {
 		t.Fatalf("client.Technicians.Get failed: %v", err)
 	}
-	if tech.ID != "42" || tech.Name != "Alice Tech" {
+	if tech.ID != "42" || tech.Name != "Alice Tech" || tech.JobTitle != "Senior Engineer" {
 		t.Errorf("unexpected technician: %+v", tech)
 	}
 	if tech.UDFFields["udf_char1"] != "987654321" {
-		t.Errorf("unexpected udf_fields: %+v", tech.UDFFields)
+		t.Errorf("unexpected technician_udf_fields: %+v", tech.UDFFields)
+	}
+	if tech.UserUDFFields["udf_sline_2401"] != "ext-100" {
+		t.Errorf("unexpected user_udf_fields: %+v", tech.UserUDFFields)
 	}
 
 	type TechUDF struct {
@@ -106,7 +113,7 @@ func TestTechniciansService_List(t *testing.T) {
 				{
 					"id": "42",
 					"name": "Alice Tech",
-					"udf_fields": {"udf_char1": "987654321"}
+					"technician_udf_fields": {"udf_char1": "987654321"}
 				}
 			]
 		}`))
@@ -152,7 +159,7 @@ func TestTechniciansService_Update(t *testing.T) {
 			"technician": {
 				"id": "42",
 				"name": "Alice Tech",
-				"udf_fields": {"udf_char1": "111222333"}
+				"technician_udf_fields": {"udf_char1": "111222333"}
 			}
 		}`))
 	}))
@@ -164,7 +171,7 @@ func TestTechniciansService_Update(t *testing.T) {
 	}
 
 	updated, err := client.Technicians.Update(context.Background(), "42", map[string]any{
-		"udf_fields": map[string]any{"udf_char1": "111222333"},
+		"technician_udf_fields": map[string]any{"udf_char1": "111222333"},
 	})
 	if err != nil {
 		t.Fatalf("client.Technicians.Update failed: %v", err)
@@ -194,7 +201,7 @@ func TestFindTechnicianByField(t *testing.T) {
 				t.Fatalf("expected 1 search criterion, got %d", len(decoded.ListInfo.SearchCriteria))
 			}
 			sc := decoded.ListInfo.SearchCriteria[0]
-			if sc.Field != "udf_fields.udf_char1" || sc.Condition != "is" || sc.Value != "987654321" {
+			if sc.Field != "technician_udf_fields.udf_char1" || sc.Condition != "is" || sc.Value != "987654321" {
 				t.Errorf("unexpected search criterion: %+v", sc)
 			}
 
@@ -203,14 +210,14 @@ func TestFindTechnicianByField(t *testing.T) {
 				"response_status": [{"status_code": 2000, "status": "success"}],
 				"list_info": {"has_more_rows": false, "row_count": 1},
 				"technicians": [
-					{"id": "42", "name": "Alice Tech", "udf_fields": {"udf_char1": "987654321"}}
+					{"id": "42", "name": "Alice Tech", "technician_udf_fields": {"udf_char1": "987654321"}}
 				]
 			}`))
 		}))
 		defer ts.Close()
 
 		client, _ := sdp.NewClient(ts.URL, sdp.WithAuthToken("test-token"))
-		tech, err := sdp.FindTechnicianByField[TechUDF](context.Background(), client, "udf_fields.udf_char1", "987654321")
+		tech, err := sdp.FindTechnicianByField[TechUDF](context.Background(), client, "technician_udf_fields.udf_char1", "987654321")
 		if err != nil {
 			t.Fatalf("FindTechnicianByField failed: %v", err)
 		}
@@ -231,7 +238,7 @@ func TestFindTechnicianByField(t *testing.T) {
 		defer ts.Close()
 
 		client, _ := sdp.NewClient(ts.URL, sdp.WithAuthToken("test-token"))
-		_, err := client.Technicians.FindByField(context.Background(), "udf_fields.udf_char1", "000")
+		_, err := client.Technicians.FindByField(context.Background(), "technician_udf_fields.udf_char1", "000")
 		if !errors.Is(err, sdp.ErrTechnicianNotFound) {
 			t.Errorf("expected ErrTechnicianNotFound, got %v", err)
 		}
@@ -252,7 +259,7 @@ func TestFindTechnicianByField(t *testing.T) {
 		defer ts.Close()
 
 		client, _ := sdp.NewClient(ts.URL, sdp.WithAuthToken("test-token"))
-		_, err := sdp.FindTechnicianByField[TechUDF](context.Background(), client, "udf_fields.udf_char1", "987654321")
+		_, err := sdp.FindTechnicianByField[TechUDF](context.Background(), client, "technician_udf_fields.udf_char1", "987654321")
 		if !errors.Is(err, sdp.ErrMultipleTechniciansFound) {
 			t.Errorf("expected ErrMultipleTechniciansFound, got %v", err)
 		}
