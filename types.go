@@ -153,14 +153,55 @@ type Resolution struct {
 	ResolutionAttachments []Attachment `json:"resolution_attachments,omitempty"`
 }
 
+// AttachmentSize captures SDP's attachment size, which may be returned as a
+// {display_value, value} object, a string, or a number.
+type AttachmentSize struct {
+	DisplayValue string `json:"display_value,omitempty"`
+	Value        string `json:"value,omitempty"`
+}
+
+// String returns the human-readable size if available, falling back to the raw value.
+func (s AttachmentSize) String() string {
+	if s.DisplayValue != "" {
+		return s.DisplayValue
+	}
+	return s.Value
+}
+
+// UnmarshalJSON decodes AttachmentSize from an object, string, or number.
+func (s *AttachmentSize) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "" || trimmed == "null" {
+		*s = AttachmentSize{}
+		return nil
+	}
+
+	if trimmed[0] == '{' {
+		var raw struct {
+			DisplayValue string          `json:"display_value"`
+			Value        json.RawMessage `json:"value"`
+		}
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return err
+		}
+		s.DisplayValue = raw.DisplayValue
+		s.Value = unmarshalFlexibleString(raw.Value)
+		return nil
+	}
+
+	s.DisplayValue = ""
+	s.Value = unmarshalFlexibleString(data)
+	return nil
+}
+
 // Attachment represents an attached file.
 type Attachment struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Size         string   `json:"size,omitempty"`
-	ContentType  string   `json:"content_type,omitempty"`
-	ContentURL   string   `json:"content_url,omitempty"`
-	Module       string   `json:"module,omitempty"`
-	AttachedBy   *UserRef `json:"attached_by,omitempty"`
-	AttachedTime *SDPTime `json:"attached_time,omitempty"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Size         *AttachmentSize `json:"size,omitempty"`
+	ContentType  string          `json:"content_type,omitempty"`
+	ContentURL   string          `json:"content_url,omitempty"`
+	Module       string          `json:"module,omitempty"`
+	AttachedBy   *UserRef        `json:"attached_by,omitempty"`
+	AttachedTime *SDPTime        `json:"attached_time,omitempty"`
 }

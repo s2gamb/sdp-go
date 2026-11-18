@@ -170,3 +170,65 @@ func TestUnmarshalListRequests(t *testing.T) {
 		t.Errorf("unexpected IDs: %s, %s", resp.Requests[0].ID, resp.Requests[1].ID)
 	}
 }
+
+func TestAttachmentSizeUnmarshal(t *testing.T) {
+	rawJSON := `{
+		"request": {
+			"id": "700",
+			"subject": "Ticket with attachments",
+			"attachments": [
+				{
+					"id": "1",
+					"name": "report.pdf",
+					"size": {"display_value": "25.4 KB", "value": 26012}
+				},
+				{
+					"id": "2",
+					"name": "notes.txt",
+					"size": {"display_value": "1.2 KB", "value": "1228"}
+				},
+				{
+					"id": "3",
+					"name": "legacy_str.log",
+					"size": "512 bytes"
+				},
+				{
+					"id": "4",
+					"name": "legacy_num.bin",
+					"size": 4096
+				},
+				{
+					"id": "5",
+					"name": "no_size.txt"
+				}
+			]
+		},
+		"response_status": {"status_code": 2000, "status": "success"}
+	}`
+
+	var resp sdp.SingleRequestResponse[map[string]any]
+	if err := json.Unmarshal([]byte(rawJSON), &resp); err != nil {
+		t.Fatalf("failed to unmarshal SingleRequestResponse with attachments: %v", err)
+	}
+
+	atts := resp.Request.Attachments
+	if len(atts) != 5 {
+		t.Fatalf("expected 5 attachments, got %d", len(atts))
+	}
+
+	if atts[0].Size == nil || atts[0].Size.DisplayValue != "25.4 KB" || atts[0].Size.Value != "26012" || atts[0].Size.String() != "25.4 KB" {
+		t.Errorf("unexpected attachment[0] size: %+v", atts[0].Size)
+	}
+	if atts[1].Size == nil || atts[1].Size.DisplayValue != "1.2 KB" || atts[1].Size.Value != "1228" {
+		t.Errorf("unexpected attachment[1] size: %+v", atts[1].Size)
+	}
+	if atts[2].Size == nil || atts[2].Size.DisplayValue != "" || atts[2].Size.Value != "512 bytes" || atts[2].Size.String() != "512 bytes" {
+		t.Errorf("unexpected attachment[2] size: %+v", atts[2].Size)
+	}
+	if atts[3].Size == nil || atts[3].Size.DisplayValue != "" || atts[3].Size.Value != "4096" || atts[3].Size.String() != "4096" {
+		t.Errorf("unexpected attachment[3] size: %+v", atts[3].Size)
+	}
+	if atts[4].Size != nil {
+		t.Errorf("expected nil size for attachment[4], got %+v", atts[4].Size)
+	}
+}
